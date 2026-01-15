@@ -6,9 +6,31 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import citcon.cpay.R
-import com.citconpay.sdk.data.model.*
+import com.citconpay.sdk.data.model.CPayBillingAddr
+import com.citconpay.sdk.data.model.CPayConsumer
+import com.citconpay.sdk.data.model.CPayExtGateway
+import com.citconpay.sdk.data.model.CPayGoodsData
+import com.citconpay.sdk.data.model.CPayMethodType
+import com.citconpay.sdk.data.model.CPayRequest
 import com.citconpay.sdk.data.model.CPayRequest.BillingAdressBuilder
 import com.citconpay.sdk.data.model.CPayRequest.ConsumerBuilder
+import com.citconpay.sdk.data.model.CPayShipping
+import com.citconpay.sdk.data.model.ErrorMessage
+import com.citconpay.sdk.data.model.klarna.CPayExtCar
+import com.citconpay.sdk.data.model.klarna.CPayExtCarItinerary
+import com.citconpay.sdk.data.model.klarna.CPayExtFlight
+import com.citconpay.sdk.data.model.klarna.CPayExtFlightItinerary
+import com.citconpay.sdk.data.model.klarna.CPayExtHost
+import com.citconpay.sdk.data.model.klarna.CPayExtHotel
+import com.citconpay.sdk.data.model.klarna.CPayExtHotelItinerary
+import com.citconpay.sdk.data.model.klarna.CPayExtInsurance
+import com.citconpay.sdk.data.model.klarna.CPayExtLocation
+import com.citconpay.sdk.data.model.klarna.CPayExtPassenger
+import com.citconpay.sdk.data.model.klarna.CPayExtTokenization
+import com.citconpay.sdk.data.model.klarna.CPayExtTrip
+import com.citconpay.sdk.data.model.klarna.CPayExtTripItinerary
+import com.citconpay.sdk.data.model.klarna.CPayExtTripPassenger
+import com.citconpay.sdk.data.model.klarna.CPayExtTripServices
 import com.citconpay.sdk.data.repository.CPayENVMode
 import com.google.gson.GsonBuilder
 import kotlinx.coroutines.launch
@@ -19,8 +41,15 @@ import org.json.JSONObject
 import retrofit2.HttpException
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import upidemo.model.*
-import java.util.*
+import upidemo.model.CitconUPIAPIService
+import upidemo.model.Device
+import upidemo.model.Ext
+import upidemo.model.RequestAccessToken
+import upidemo.model.RequestChargeToken
+import upidemo.model.Transaction
+import upidemo.model.Urls
+import java.util.Arrays
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 
@@ -44,9 +73,9 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
 
     object RetrofitClient {
 
-//        private const val BASE_URL = "https://api.qa01.citconpay.com/v1/";
+        private const val BASE_URL = "https://api-eks.qa01.citconpay.com/v1/";
 //        private const val BASE_URL = "https://api-eks.qa01.citconpay.com/v1/";
-        private const val BASE_URL = "https://api.sandbox.citconpay.com/v1/";
+//        private const val BASE_URL = "https://api.sandbox.citconpay.com/v1/";
 
         private val okHttpClient = OkHttpClient.Builder()
             .callTimeout(30, TimeUnit.SECONDS)
@@ -82,7 +111,8 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
                     R.id.radioButton_cashapp -> CPayMethodType.CASHAPP
                     R.id.radioButton_upipaypal -> CPayMethodType.PAYPAL
                     R.id.radioButton_upivenmo -> CPayMethodType.PAY_WITH_VENMO
-
+                    R.id.radioButton_klarna -> CPayMethodType.KLARNA
+                    R.id.radioButton_flexa -> CPayMethodType.FLEXA
                     else -> CPayMethodType.WECHAT
                 }
             } else {
@@ -290,7 +320,7 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
                     .build();
 
                 // build order object
-                var order = CPayRequest.UPIOrderBuilder()
+                    var order = CPayRequest.UPIOrderBuilder()
                     .accessToken(mAccessToken.value!!)
                     .chargeToken(mChargeToken.value!!)
                     .reference(mReference)
@@ -312,6 +342,93 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
                     .shipping(shipping)
                     .build(CPayENVMode.UAT);
                     return order
+            }
+
+            if (type == CPayMethodType.KLARNA) {
+                // goods
+                val goodsList: MutableList<CPayGoodsData> = ArrayList()
+                val goodsData = CPayGoodsData()
+                goodsData.name = "iPhone 15"
+                goodsData.quantity = 1
+                goodsData.unitAmount = 100
+                goodsData.totalAmount = 100
+                goodsList.add(goodsData)
+                val goods = goodsList.toTypedArray()
+                // billing
+                val billingAddr = CPayBillingAddr()
+                billingAddr.country = "US"
+                billingAddr.city = "San Jose"
+                billingAddr.state = "CA"
+                billingAddr.street = "2055 Gateway Place"
+                billingAddr.street2 = "Suite 500"
+                billingAddr.zip = "95110"
+
+
+                var consumer = ConsumerBuilder()
+                    .reference(mReference)
+                    .firstName("first")
+                    .lastName("last")
+                    .email("test@citcon.cn")
+                    .phone("+8615167186161")
+                    .build();
+
+                val extGateway = buildKlarnaGateway();
+
+                return CPayRequest.UPIOrderBuilder()
+                    .accessToken(mAccessToken.value!!)
+                    .chargeToken(mChargeToken.value!!)
+                    .reference(mReference)
+                    .country(Locale.US)
+                    .currency("USD")
+                    .amount(mAmount)
+                    .goods(goods)
+                    .billingAddr(billingAddr)
+                    .consumer(consumer)
+                    .enableAutoCapture(true)
+                    .paymentMethod(type)
+                    .extGateway(extGateway)
+                    .ipnURL("https://www.merchant.com/ipn")
+                    .callbackURL(mCallback)
+                    .mobileURL("https://exampe.com/mobile")
+                    .cancelURL("citcon://cpay.sdk")
+                    .failURL("citcon://cpay.sdk")
+                    .build(CPayENVMode.QA)
+
+            }
+
+            if (type == CPayMethodType.FLEXA) {
+                val billingAddr = CPayBillingAddr()
+                billingAddr.country = "US"
+                billingAddr.city = "San Jose"
+                billingAddr.state = "CA"
+                billingAddr.street = "2055 Gateway Place"
+                billingAddr.street2 = "Suite 500"
+                billingAddr.zip = "95110"
+
+                var consumer = ConsumerBuilder()
+                    .reference(mReference)
+                    .firstName("first")
+                    .lastName("last")
+                    .email("test@citcon.cn")
+                    .phone("+8615167186161")
+                    .build();
+
+                return CPayRequest.UPIOrderBuilder()
+                    .accessToken(mAccessToken.value!!)
+                    .chargeToken(mChargeToken.value!!)
+                    .reference(mReference)
+                    .country(Locale.US)
+                    .currency("USD")
+                    .amount(mAmount)
+                    .billingAddr(billingAddr)
+                    .consumer(consumer)
+                    .paymentMethod(type)
+                    .ipnURL("https://www.merchant.com/ipn")
+                    .callbackURL(mCallback)
+                    .mobileURL("https://exampe.com/mobile")
+                    .cancelURL("citcon://cpay.sdk")
+                    .failURL("citcon://cpay.sdk")
+                    .build(CPayENVMode.QA)
             }
 
             return CPayRequest.UPIOrderBuilder()
@@ -363,6 +480,161 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
         radioGroup?.let {
             setPaymentMethod(it.id, id)
         }
+    }
+
+    fun buildKlarnaGateway(): CPayExtGateway {
+        val extGateway = CPayExtGateway();
+        val extTokenization = CPayExtTokenization(
+            20,
+            4,
+            "Week",
+            10,
+            100
+        )
+        extGateway.tokenization = extTokenization;
+
+        val extFlightInsuranceList: MutableList<CPayExtInsurance> = ArrayList()
+        val insurance = CPayExtInsurance("AON", "cancellation", 200)
+        extFlightInsuranceList.add(insurance)
+
+        val extFlightPassengerList: MutableList<CPayExtPassenger> = ArrayList()
+        val passenger = CPayExtPassenger(1, "mr", "John", "Doe")
+        extFlightPassengerList.add(passenger)
+
+        val extLocation = CPayExtLocation("Admond", "0426", "HangZhou", "China")
+        val carItinerary = CPayExtCarItinerary(
+            "XieCheng",
+            ArrayList(
+                Arrays.asList(1)
+            ),
+            extLocation,
+            "2022-08-06T19:50:00Z",
+            extLocation,
+            "2022-08-06T19:50:00Z",
+            24000,
+            "CAR"
+        )
+
+        // Flight List
+        val extFlightList: MutableList<CPayExtFlight> = ArrayList()
+        val extFlight = CPayExtFlight()
+        extFlight.pnr = "Y2YWJD"
+        extFlight.affiliateName = "Booking.com"
+
+        val itineraryList: MutableList<CPayExtFlightItinerary> = ArrayList()
+        val itinerary = CPayExtFlightItinerary()
+        itinerary.departure = "AMS"
+        itinerary.departureCity = "Amsterdam"
+        itinerary.arrival = "LHR"
+        itinerary.arrivalCity = "London"
+        itinerary.carrier = "KL"
+        itinerary.segmentPrice = 2000
+        itinerary.departureDate = "2022-08-06T19:50:00Z"
+        itinerary.ticketDeliveryMethod = "email"
+        itinerary.ticketDeliveryRecipient = "john.doe@email.com"
+        itinerary.passengerId = ArrayList(Arrays.asList(1, 2, 3))
+        itinerary.flightClass = "business"
+        itineraryList.add(itinerary)
+        extFlight.itinerary = itineraryList
+
+        extFlight.insurance = extFlightInsuranceList
+        extFlight.passengers = extFlightPassengerList
+
+        extFlightList.add(extFlight)
+        extGateway.flight = extFlightList
+
+        // CarList
+        val extCarList: MutableList<CPayExtCar> = ArrayList()
+        val extCar = CPayExtCar()
+        extCar.pnr = "Y3DCAR"
+        extCar.affiliateName = "Caring.com"
+
+        val carItineraryList: MutableList<CPayExtCarItinerary> = ArrayList()
+
+        carItineraryList.add(carItinerary)
+        extCar.carRentalItinerary = carItineraryList
+        extCar.insurance = extFlightInsuranceList
+        extCar.drivers = extFlightPassengerList
+        extCarList.add(extCar)
+        extGateway.car = extCarList
+
+        // Hotel
+        val extHotelList: MutableList<CPayExtHotel> = ArrayList()
+        val extHotel = CPayExtHotel()
+        extHotel.pnr = "hotelPnr"
+        extHotel.numberReservationsByGuest = 123456
+        extHotel.affiliateName = "hotel_Affiliate"
+
+        val extHostList: MutableList<CPayExtHost> = ArrayList()
+        val extHost = CPayExtHost("G-223", "2022-08-06T19:50:00Z", 654321)
+        extHostList.add(extHost)
+        extHotel.host = extHostList
+
+        val extHotelItineraryList: MutableList<CPayExtHotelItinerary> = ArrayList()
+        val hotelItinerary = CPayExtHotelItinerary(
+            "HotelName",
+            extLocation,
+            "2022-08-06T19:50:00Z",
+            "2022-08-06T19:50:00Z",
+            246,
+            ArrayList(Arrays.asList(1, 2)),
+            "email",
+            "test@citcon.com",
+            4500,
+            "Hotel"
+        )
+        extHotelItineraryList.add(hotelItinerary)
+        extHotel.hotelItinerary = extHotelItineraryList
+        extHotel.insurance = extFlightInsuranceList
+        extHotel.passengers = extFlightPassengerList
+        extHotelList.add(extHotel)
+        extGateway.hotel = extHotelList
+
+        // Trip
+        val extTripList: MutableList<CPayExtTrip> = ArrayList()
+        val extTrip = CPayExtTrip()
+        extTrip.minAge = 20
+        extTrip.maxAge = 40
+        extTrip.affiliateName = "TRIP_Affiliate"
+
+        val tripItinerary = CPayExtTripItinerary(
+            "2022-08-06T19:50:00Z",
+            "BeiJing",
+            "USA",
+            "2022-08-06T19:50:00Z",
+            "ShangHai",
+            "China"
+        )
+        extTrip.tripItinerary = tripItinerary
+
+        val extTripPassengerList: MutableList<CPayExtTripPassenger> = ArrayList()
+        val extTripPassenger = CPayExtTripPassenger(
+            1,
+            "Jiang",
+            "Cui",
+            "2022-08-06T19:50:00Z",
+            "Male",
+            "jiangcui@citcon.cn",
+            "2542",
+            true,
+            false
+        )
+        extTripPassengerList.add(extTripPassenger)
+        extTrip.tripPassengers = extTripPassengerList
+
+        val tripServices = CPayExtTripServices(
+            true,
+            true,
+            true,
+            false,
+            false
+        )
+        extTrip.services = tripServices
+        extTripList.add(extTrip)
+        extGateway.trip = extTripList
+
+
+        return extGateway;
     }
 
 }

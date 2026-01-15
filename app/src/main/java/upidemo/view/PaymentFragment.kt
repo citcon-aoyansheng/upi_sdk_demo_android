@@ -139,6 +139,8 @@ class PaymentFragment : Fragment() {
                 R.id.radioButton_cashapp -> mDemoViewModel.setPaymentMethod(CPayMethodType.CASHAPP)
                 R.id.radioButton_upipaypal -> mDemoViewModel.setPaymentMethod(CPayMethodType.PAYPAL)
                 R.id.radioButton_upivenmo -> mDemoViewModel.setPaymentMethod(CPayMethodType.PAY_WITH_VENMO)
+                R.id.radioButton_klarna -> mDemoViewModel.setPaymentMethod(CPayMethodType.KLARNA)
+                R.id.radioButton_flexa -> mDemoViewModel.setPaymentMethod(CPayMethodType.FLEXA)
             }
 
         }

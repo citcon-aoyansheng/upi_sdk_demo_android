@@ -12,7 +12,7 @@ android {
         minSdk 26
         targetSdk 34
         versionCode 1
-        versionName "1.2"
+        versionName "1.8"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -27,11 +27,11 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '17'
     }
 
     buildFeatures {
@@ -40,6 +40,13 @@ android {
     }
     buildToolsVersion '31.0.0'
     namespace 'citcon.cpay'
+}
+
+kapt {
+    javacOptions {
+        option("-source", "17")
+        option("-target", "17")
+    }
 }
 
 //repositories {
@@ -69,11 +76,10 @@ dependencies {
 
     // full module
 //    implementation 'com.citcon.sdk:cpay:4.24.0'
-
-
+//    api project(':cpay_local')
 
     // partial module
-    implementation('com.citcon.sdk:cpay:4.24.2') {
+    implementation('com.citcon.sdk:cpay:4.27.0') {
         // paypal module
 //        exclude group: "com.paypal.android", module: "paypal-native-payments"
 //        exclude group: "com.paypal.android", module: "paypal-web-payments"
