@@ -359,6 +359,18 @@
                 android:layout_height="wrap_content"
                 android:text="@string/cashapp" />
 
+            <RadioButton
+                android:id="@+id/radioButton_klarna"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/klarna" />
+
+            <RadioButton
+                android:id="@+id/radioButton_flexa"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/Flexa" />
+
         </upidemo.view.MyRadioGroup>
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>
